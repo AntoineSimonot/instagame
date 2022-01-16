@@ -2,12 +2,29 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Core\Annotation\ApiFilter;
 use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
 use App\Repository\MessageRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: MessageRepository::class)]
-#[ApiResource]
+#[ApiResource(
+    collectionOperations: [
+        'get' => ['method' => 'get'],
+        'post' => ['method' => 'post'],
+    ],
+    itemOperations: [
+        'get' => ['method' => 'get'],
+        'put' => [
+            'normalization_context' => ['groups' => ['message:put']],
+        ],
+    ],
+    denormalizationContext: ['groups' => ['message:write']],
+    normalizationContext: ['groups' => ['message:read']],
+)]
+#[ApiFilter(SearchFilter::class, properties: ['content' => 'partial'])]
 class Message
 {
     #[ORM\Id]
@@ -16,6 +33,7 @@ class Message
     private $id;
 
     #[ORM\Column(type: 'text')]
+    #[Groups(["message:read", "message:write"])]
     private $content;
 
     #[ORM\Column(type: 'datetime_immutable')]
@@ -23,10 +41,12 @@ class Message
 
     #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'sent')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(["message:read", "message:write", "message:put"])]
     private $sender;
 
     #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'received')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(["message:read", "message:write", "message:put"])]
     private $recipient;
 
     public function __construct()
