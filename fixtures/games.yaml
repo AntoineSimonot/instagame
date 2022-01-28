@@ -1,0 +1,3 @@
+App\Entity\Game:
+  game_{1..100}:
+    name: <text()>

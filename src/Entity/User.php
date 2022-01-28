@@ -21,13 +21,17 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ApiResource(
     collectionOperations: [
         'get' => ['method' => 'get'],
-        'post' => ['method' => 'post'],
+        'post' => [
+            'method' => 'post',
+            'normalization_context' => ['groups' => ['user:post']],
+        ],
     ],
     itemOperations: [
         'get' => ['method' => 'get'],
         'put' => [
             'normalization_context' => ['groups' => ['user:put']],
         ],
+        'delete' => ['method' => 'delete'],
     ],
     denormalizationContext: ['groups' => ['user:write']],
     normalizationContext: ['groups' => ['user:read']],
@@ -42,7 +46,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private $id;
 
     #[ORM\Column(type: 'string', length: 180, unique: true)]
-    #[Groups(["user:read", "user:write", "user:put"])]
+    #[Groups(["user:read", "user:write", "user:put", "user:post"])]
     #[Assert\Email]
     private $email;
 
@@ -50,7 +54,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private $roles = [];
 
     #[ORM\Column(type: 'string')]
-    #[Groups(["user:write"])]
+    #[Groups(["user:write", "user:post"])]
     #[Assert\NotBlank]
     #[Assert\Length(
         min: 2,
@@ -61,7 +65,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private $password;
 
     #[ORM\Column(type: 'string', length: 255)]
-    #[Groups(["user:read", "user:write", "user:put"])]
+    #[Groups(["user:read", "user:write", "user:put", "user:post"])]
     #[Assert\NotBlank]
     private $pseudo;
 
@@ -72,15 +76,30 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private $received;
 
     #[ORM\ManyToOne(targetEntity: MediaObject::class)]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true)]
     #[ApiProperty(iri: 'http://schema.org/image')]
     #[Groups(["user:read", "user:write", "user:put"])]
     public ?MediaObject $image = null;
+
+    #[ORM\OneToOne(mappedBy: 'user', targetEntity: Profile::class, cascade: ['persist', 'remove'])]
+    private $profile;
+
+    #[ORM\ManyToMany(targetEntity: Profile::class, mappedBy: 'views')]
+    private $views;
+
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Post::class)]
+    private $posts;
+
+    #[ORM\ManyToMany(targetEntity: Post::class, mappedBy: 'likes')]
+    private $likes;
 
     public function __construct()
     {
         $this->sent = new ArrayCollection();
         $this->received = new ArrayCollection();
+        $this->views = new ArrayCollection();
+        $this->posts = new ArrayCollection();
+        $this->likes = new ArrayCollection();
     }
 
 
@@ -260,5 +279,113 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
         return $this;
     }
+
+
+    public function getProfile(): ?Profile
+    {
+        return $this->profile;
+    }
+
+    public function setProfile(?Profile $profile): self
+    {
+        // unset the owning side of the relation if necessary
+        if ($profile === null && $this->profile !== null) {
+            $this->profile->setUser(null);
+        }
+
+        // set the owning side of the relation if necessary
+        if ($profile !== null && $profile->getUser() !== $this) {
+            $profile->setUser($this);
+        }
+
+        $this->profile = $profile;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection|Profile[]
+     */
+    public function getViews(): Collection
+    {
+        return $this->views;
+    }
+
+    public function addView(Profile $view): self
+    {
+        if (!$this->views->contains($view)) {
+            $this->views[] = $view;
+            $view->addView($this);
+        }
+
+        return $this;
+    }
+
+    public function removeView(Profile $view): self
+    {
+        if ($this->views->removeElement($view)) {
+            $view->removeView($this);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection|Post[]
+     */
+    public function getPosts(): Collection
+    {
+        return $this->posts;
+    }
+
+    public function addPost(Post $post): self
+    {
+        if (!$this->posts->contains($post)) {
+            $this->posts[] = $post;
+            $post->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removePost(Post $post): self
+    {
+        if ($this->posts->removeElement($post)) {
+            // set the owning side to null (unless already changed)
+            if ($post->getUser() === $this) {
+                $post->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection|Post[]
+     */
+    public function getLikes(): Collection
+    {
+        return $this->likes;
+    }
+
+    public function addLike(Post $like): self
+    {
+        if (!$this->likes->contains($like)) {
+            $this->likes[] = $like;
+            $like->addLike($this);
+        }
+
+        return $this;
+    }
+
+    public function removeLike(Post $like): self
+    {
+        if ($this->likes->removeElement($like)) {
+            $like->removeLike($this);
+        }
+
+        return $this;
+    }
+
 
 }

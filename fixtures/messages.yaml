@@ -1,0 +1,5 @@
+App\Entity\Message:
+  message_{1..100}:
+    content: <text()>
+    sender: '@user_*'
+    recipient: '@user_*'

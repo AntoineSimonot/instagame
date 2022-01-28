@@ -9,6 +9,7 @@ use App\Repository\MessageRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
+
 #[ORM\Entity(repositoryClass: MessageRepository::class)]
 #[ApiResource(
     collectionOperations: [
@@ -22,6 +23,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
         ],
     ],
     denormalizationContext: ['groups' => ['message:write']],
+    mercure: true,
     normalizationContext: ['groups' => ['message:read']],
 )]
 #[ApiFilter(SearchFilter::class, properties: ['content' => 'partial'])]

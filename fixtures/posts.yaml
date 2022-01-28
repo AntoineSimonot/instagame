@@ -1,0 +1,6 @@
+App\Entity\Post:
+  tag_{1..100}:
+    content: <text()>
+    user: '@user_*'
+    likes : [ '@user_*' ]
+    tags: [ '@tags_*']

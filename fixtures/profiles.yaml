@@ -1,0 +1,9 @@
+App\Entity\Profile:
+  profile_{1..100}:
+    title: <text()>
+    description: <password()>
+    birthday: <(new \DateTime('2014-02-02'))>
+    user: '@user_<current()>'
+    games: ['@game_*']
+    views: [ '@user_*']
+
